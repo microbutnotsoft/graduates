@@ -1,59 +1,80 @@
 import { ApiHosting } from '@graduates/api/hosting/api/shared/data-access';
-import { Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { Injectable, Query } from '@nestjs/common';
+import { HealthCheck, HealthCheckResult, HealthCheckService, HttpHealthIndicator } from '@nestjs/terminus';
 
+type HealthCheckParameters = {
+  title: string,
+  path: string,
+  query: string,
+};
 @Injectable()
-export class ApiHostingServiceFeatureModule {
+export class ApiHostingServiceFeatureModule{
+  private commonPath = 'http://localhost:3333/graphql';
+  private checks: HealthCheckParameters[] = [
+    {title: 'Storage API', path: this.commonPath,  query: '{pingStorage}'},
+    {title: 'Shorts API', path: this.commonPath,  query: '{pingShorts}'},
+    {title: 'Notification API', path: this.commonPath,  query: '{pingNotification}'},
+    {title: 'Company Profile API', path: this.commonPath,  query: '{pingCompanyProfile}'},
+    {title: 'Access Status API', path: this.commonPath,  query: '{pingAccessStatus}'},
+    {title: 'Student Profiles API', path: this.commonPath,  query: '{pingStudentProfiles}'},
+    {title: 'Company Representative API', path: this.commonPath,  query: '{ pingCompanyRepresentative}'},
+    {title: 'Request Access API', path: this.commonPath,  query: '{pingRequestAccess}'},
+    {title: 'Authentication API', path: this.commonPath,  query: '{pingAuthentication}'},
+    {title: 'Student Explore API', path: this.commonPath,  query: '{pingStudentExplore}'},
+    {title: 'Adminconsole API', path: this.commonPath,  query: '{pingAdminconsole}'},
+    {title: 'UP Integration API', path: this.commonPath,  query: '{pingUpintegration}'},
+    {title: 'Blog API', path: this.commonPath,  query: '{pingBlog}'},
+    {title: 'Company Explore API', path: this.commonPath,  query: '{pingCompanyExplore}'},
+    {title: 'Authorization API', path: this.commonPath,  query: '{pingAuthorization}'} , 
+    
+  ]
+  constructor(
+    private httpService: HttpService,
+    private health: HealthCheckService,
+    private http: HttpHealthIndicator, 
+  ){}
+  // private hosting: ApiHosting[] = [];
   async get_all(): Promise<ApiHosting[]>{
-    const storageAPI = new ApiHosting();
-      const statusAPI = new ApiHosting();
-      const companyProfileAPI = new ApiHosting();
-      const shortsAPI = new ApiHosting();
-      const accessStatusAPI = new ApiHosting();
-      const companyProfilePageAPI = new ApiHosting();
-      const studentProfilesAPI = new ApiHosting();
-      const companyRepresentativeAPI = new ApiHosting();
-      const requestAccessAPI = new ApiHosting();
-      const authenticationAPI = new ApiHosting();
+    let hosting: ApiHosting[] = [];
+    //clear the hosting object
+    // this.hosting = [];
 
-      storageAPI.name = "Storage API";
-      storageAPI.status = "Operational";
-
-      statusAPI.name = "Status API";
-      statusAPI.status = "Operational";
-
-      companyProfileAPI.name = "Company Profile API";
-      companyProfileAPI.status = "Operational";
-      
-      shortsAPI.name = "Shorts API";
-      shortsAPI.status = "Operational";
-
-      accessStatusAPI.name = "Access Status API";
-      accessStatusAPI.status = "Operational";
-
-      companyProfilePageAPI.name = "company Profile Page API";
-      companyProfilePageAPI.status = "Operational";
-
-      studentProfilesAPI.name = "student Profiles API";
-      studentProfilesAPI.status = "Operational";
-
-      companyRepresentativeAPI.name = "company Representative API";
-      companyRepresentativeAPI.status = "Operational";
-
-      requestAccessAPI.name = "request Access API";
-      requestAccessAPI.status = "Operational";
-
-      authenticationAPI.name = "authentication API";
-      authenticationAPI.status = "Operational";
-      return[
-        storageAPI
-        ,statusAPI
-        ,companyProfileAPI
-        ,shortsAPI
-        ,accessStatusAPI
-        ,companyProfilePageAPI
-        ,studentProfilesAPI
-        ,companyRepresentativeAPI
-        ,requestAccessAPI
-        ,authenticationAPI];
+    // in future, explore use of Promise.all([...]) for efficiency and concurrent checks
+    for (const check of this.checks) {      
+      const hostingObj = new ApiHosting();
+      hostingObj.name = check.title
+      try {
+        await this.checkApiHealth(check);
+        hostingObj.status = "Operational";
+      } catch {
+        hostingObj.status = "Non Operational";
+      }
+      // this.hosting.push(hostingObj);
+      hosting.push(hostingObj);
+    }
+    hosting = hosting.concat(this.AddAllUnimplemented());
+    return hosting;
   }
+
+  @HealthCheck()
+  checkApiHealth(params: HealthCheckParameters): Promise<HealthCheckResult> {
+    return this.health.check([
+      () => this.http.pingCheck(params.title, `${params.path}?query=${encodeURI(params.query)}`) // encode URI automatically
+    ])
+  }
+
+  AddAllUnimplemented(): ApiHosting[]{
+    const unimplemented1 = new ApiHosting();
+    unimplemented1.name = "Block Chain";
+    unimplemented1.status = "Under Development";
+    const retArr: ApiHosting[] = []; 
+    retArr.push(unimplemented1)
+    return retArr;
+  }
+ 
+  getChecksLength(): number {
+    return this.checks.length;
+  }
+
 }

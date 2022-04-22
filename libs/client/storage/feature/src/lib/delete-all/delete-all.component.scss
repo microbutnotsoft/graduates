@@ -1,3 +1,5 @@
-.ineffective-button{
-    background-color: #B8B4B5;
+@import 'libs/client/shared/assets/ui/src/lib/global';
+
+.ineffective-button {
+    background-color: $card-red;
 }

@@ -18,43 +18,47 @@ export class RequestForAccessComponent implements OnInit {
   constructor(private store: Store, private apiService: RequestForAccessService) {
     //make API call to check if the current login token is a company rep, then get the company ID of the company rep.
     this.isFeatureVisible = true;
-    this.companyID = "";
-    this.graduateID = "";
+    this.companyID = "10";
+    this.graduateID = "7";
   }
 
   ngOnInit(): void {
     const actionsArr: SetAccessStatus[] = [];
 
     //make API call to access status of resources for particular company
-      this.apiService.getResourceStatuses('4', '2').subscribe({
-        next: (_res) => {
-          const jsonString = JSON.stringify(_res.response);
-          const response = JSON.parse(jsonString);
-
-          for(let i=0; i<5; i++) {
-            this.items.push(response.data.status[i].item);
-            actionsArr.push(new SetAccessStatus(response.data.status[i].item, response.data.status[i].accessStatus, i));
+    this.apiService.getResourceStatuses('10', '7').subscribe({
+      next: (_res) => {
+        for (let i = 0; i < 5; i++) {
+          if (_res.data.status[i] != undefined) {
+            this.items.push(_res.data.status[i].item);
+            actionsArr.push(new SetAccessStatus(_res.data.status[i].item, _res.data.status[i].accessStatus, i));
           }
+        }
 
-          this.store.dispatch(actionsArr).subscribe(() => {
-            this.store.select(state => state.accessState.accessGranted).subscribe((status) => {
-              const arr = status.toString().split(',');
-              for(const item of arr){
+        this.store.dispatch(actionsArr).subscribe(() => {
+          this.store.select(state => state.accessState.accessGranted).subscribe((status) => {
+            const arr = status.toString().split(',');
+            for (const item of arr) {
+              if (item === 'Private' || item === 'Rejected') {
+                this.buttons.push('Request');
+              }
+              else {
                 this.buttons.push(item);
               }
-            });
+            }
           });
-        },
-        error: (err) => { console.log(err); }
-     });
+        });
+      },
+      error: (err) => { console.log(err); }
+    });
   }
 
   onClick(idx: number, item: string): void {
     this.store.select(state => state.accessState.accessGranted[idx]).subscribe({
       next: (status) => {
         this.buttons[idx] = status;
-        if(status != "Download" && status != "Pending") {
-          this.apiService.requestAccess(this.companyID, this.graduateID, item);
+        if (status != "Download" && status != "Pending") {
+          this.apiService.requestAccess(this.companyID, this.graduateID, item.toUpperCase().replace(" ", "_")).subscribe((x)=> {x});
           this.store.dispatch(new SetAccessStatus(item, "Pending", idx));
         }
         else {
